@@ -45,6 +45,9 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     uid_name = DeviseTokenAuth.headers_names[:'uid']
     access_token_name = DeviseTokenAuth.headers_names[:'access-token']
     client_name = DeviseTokenAuth.headers_names[:'client']
+    api_key = request.headers['Api-Key']
+    api_secret = request.headers['Api-Secret']
+    business = current_business_devise(api_key, api_secret)
 
     # parse header for values necessary for authentication
     uid        = request.headers[uid_name] || params[uid_name]
@@ -76,7 +79,7 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     return false unless @token
 
     # mitigate timing attacks by finding by uid instead of auth token
-    user = uid && rc.find_by(uid: uid)
+    user = uid && business && rc.find_by(uid: uid, subdomain: business.api_key)
 
     if user && user.valid_token?(@token, @client_id)
       # sign_in with bypass: true will be deprecated in the next version of Devise
@@ -161,5 +164,13 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     user.tokens[client_id] &&
     user.tokens[client_id]['updated_at'] &&
     Time.parse(user.tokens[client_id]['updated_at']) > @request_started_at - DeviseTokenAuth.batch_request_buffer_throttle
+  end
+
+  def current_business_devise(api_key, api_secret)
+    @current_business ||=
+      Business.find_by(
+        api_key: api_key,
+        api_secret: api_secret
+      )
   end
 end
