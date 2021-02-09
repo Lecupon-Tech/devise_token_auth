@@ -170,7 +170,8 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     @current_business ||=
       Business.find_by(
         api_key: api_key,
-        api_secret: api_secret
+        api_secret: api_secret,
+        active: true
       )
   end
 end
